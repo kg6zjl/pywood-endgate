@@ -1,0 +1,14 @@
+---
+version: 3
+
+tasks:
+  default:
+    desc: <-- You are here
+    cmds:
+      - task --list-all
+
+  init:
+    desc: Install deps for micropython and setup venv
+    cmds:
+      - pyenv install micropython-1.21.0
+      - pyenv local micropython-1.21.0
