@@ -48,9 +48,10 @@ def segment_display_handler(content):
 
 def check_ldr_sensors():
     global RANK
-    for i, ldr in enumerate(LDR_SENSORS):
-        if ldr.value() == 1 and (i + 1) not in RANK:
-            RANK.append(i + 1)
+    for i, ldr_pin in enumerate(LDR_SENSORS):
+        lane = LDR_PIN_MAP[ldr_pin]['lane']
+        if ldr_pin.value() == 1 and (lane) not in RANK:
+            RANK.append(lane)
     time.sleep(0.01)  # Debounce delay
 
 # Initialize displays on first start
