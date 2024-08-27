@@ -19,6 +19,7 @@ LDR_PIN_MAP = {
 # Constants
 RESET_BTN_PIN = Pin(15, Pin.IN, Pin.PULL_UP)
 LDR_PINS = list(LDR_PIN_MAP.keys())
+CLOCK_PIN = Pin(5, Pin.OUT)
 TM_PINS = [(5, 4), (5, 5)]
 BLANK_DISPLAY = [0x00, 0x00, 0x00, 0x00]
 LANE_COUNT = len(LDR_PINS)
