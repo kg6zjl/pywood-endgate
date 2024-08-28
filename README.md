@@ -1,6 +1,6 @@
-Our scouting troop in TrailLifeUSA needs a way to identify which Pinewood Derby car place first and second. We run two brackets, one for first place and one for second. Our current track is a 4 lane with manually operated lever gate for release.
+Our scouting troop in TrailLifeUSA needs a way to identify which Pinewood Derby cars place first and second. We run two brackets, one for first place and one for second. Our current track is a 4 lane with manually operated lever gate for release.
 
-I decided that from a KISS standpoint, I don't care about timing the cars. Could be a future state, but for this iteration it doesn't matter. We really only care about the order that the cars reach the end gate.
+I decided that from a K.I.S.S. standpoint, I don't care about timing the cars. Could be a future state, but for this iteration it doesn't matter. We really only care about the order that the cars reach the end gate.
 
 This is my first time ever working at an PIO/hardware level, so feedback is appreciated. I'm learning along the way!
 

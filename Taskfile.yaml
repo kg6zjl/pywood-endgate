@@ -12,3 +12,11 @@ tasks:
     cmds:
       - pyenv install micropython-1.21.0
       - pyenv local micropython-1.21.0
+      - cd tests/ && pyenv install 3.12
+      - cd tests/ && pyenv local 3.12
+      - cd tests/ && pip install -r requirements.txt
+
+  test:
+    desc: run tests
+    cmds:
+      - cd tests/ && python unit_tests.py
