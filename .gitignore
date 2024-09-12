@@ -3,3 +3,4 @@ tests/
 firmware/
 test.py
 .env.secrets
+.vscode/
