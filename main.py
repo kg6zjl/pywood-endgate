@@ -52,7 +52,6 @@ def reset():
     STOP_DISPLAY_UPDATES = False
     lcd_writer(["READY","TO","RACE",""])
     sleep(1)
-    sleep(0.01)  # Debounce delay
 
 def check_reset_button(force = False):
     if RESET_BTN_PIN.value() == 0:
