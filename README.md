@@ -2,7 +2,7 @@ Our scouting troop in TrailLifeUSA needs a way to identify which Pinewood Derby 
 
 I decided that from a K.I.S.S. standpoint, I don't care about timing the cars. Could be a future state, but for this iteration it doesn't matter. We really only care about the order that the cars reach the end gate.
 
-This is my first time ever working at an PIO/hardware level, so feedback is appreciated. I'm learning along the way!
+This is my first time ever working at a PIO/hardware level, so feedback is appreciated. I'm learning along the way!
 
 # Initial Design
 - Micropython as the language
