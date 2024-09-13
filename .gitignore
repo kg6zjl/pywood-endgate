@@ -1,1 +1,6 @@
-tm1637.py
+__pycache__
+tests/
+firmware/
+test.py
+.env.secrets
+.vscode/
