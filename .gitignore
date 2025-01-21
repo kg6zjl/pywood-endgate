@@ -4,3 +4,4 @@ firmware/
 test.py
 .env.secrets
 .vscode/
+.DS_Store
