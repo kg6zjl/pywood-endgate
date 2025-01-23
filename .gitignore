@@ -3,5 +3,6 @@ tests/
 firmware/
 test.py
 .env.secrets
+config.json
 .vscode/
 .DS_Store

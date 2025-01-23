@@ -18,3 +18,8 @@ This is my first time ever working at a PIO/hardware level, so feedback is appre
 - A camera/photo of the winner would be fun, especially if we setup a projector
 - Automated bracket tracking?
 - IR Break Beam sensors for end gate (introduces slightly more wiring, but same amount of programatic complexity I think)
+
+# Notes
+- When loading up RP2040, you have to load MicroPython first (see firmware)
+- Then you have to copy all the project files over to RP2040
+- Click "Run" in VSCode

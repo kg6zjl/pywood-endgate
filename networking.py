@@ -1,24 +1,26 @@
 import network
 import time
 
-def connect_wifi(ssid, password=None):
+def connect_wifi(ssid, password):
     connected = False
-    # Initialize the WiFi interface
+
+    # Initialize the network interface
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
 
-    # Connect to the WiFi network
-    if password:
-        wlan.connect(ssid, password)
-    else:
-        wlan.connect(ssid)
+    # disconnect if already connected
+    if wlan.isconnected():
+        wlan.disconnect()
+
+    # Connect to the Wi-Fi network
+    wlan.connect(ssid, password)
 
     # Wait for connection
     max_attempts = 10
     attempts = 0
     while not wlan.isconnected() and attempts < max_attempts:
         print('Connecting to network...')
-        time.sleep(1)
+        time.sleep(2)
         attempts += 1
 
     # Check if connected
