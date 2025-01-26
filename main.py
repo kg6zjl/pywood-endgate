@@ -5,6 +5,7 @@ from time import sleep
 import uasyncio as asyncio
 import urequests as requests
 import json
+import utime
 
 # LCD I2C address
 LCD_ADDR = 0x27
@@ -28,7 +29,7 @@ PLACES = [
     "FIRST",
     "SECOND",
     "THIRD",
-    "FORTH",
+    "FOURTH",
 ]
 
 # Constants
@@ -40,10 +41,17 @@ CLOCK_PIN = Pin(6, Pin.OUT)
 LCD_SDA = Pin(0)
 LCD_SCL = Pin(1)
 
+# Debounce vars and tracking time diff per sensor/pin
+DEBOUNCE_TIME = 50
+last_trigger_time = {pin: 0 for pin in LDR_PINS}
+
 # Global race variables
 RANK = []
 RESULTS = {}
-STOP_DISPLAY_UPDATES = False
+STOP_UPDATES = False
+
+# networking/rest calls
+HEADERS = {'Content-Type': 'application/json'}
 
 class MockLCD:
     def __init__(self):
@@ -87,20 +95,25 @@ def read_config(file_path):
         return False
 
 def reset():
-    global RANK, STOP_DISPLAY_UPDATES, RESULTS
+    global RANK, STOP_UPDATES, RESULTS
     # Clear LCD for next race
     lcd.clear()
     # Reset for next race
     RANK = []
     RESULTS = {}
     # Resume display updates
-    STOP_DISPLAY_UPDATES = False
-    lcd_writer(["READY","TO","RACE",""])
-    sleep(1)
+    STOP_UPDATES = False
+    lcd_writer(["READY TO RACE","","",""])
+    sleep(0.1)
 
-def check_reset_button():
-    if RESET_BTN_PIN.value() == 0:
+# Interrupt handler for reset button
+def reset_button_handler(pin):
+    if pin.value() == 0:
         reset()
+        send_reset()
+
+# Configure interrupt for reset button
+RESET_BTN_PIN.irq(trigger=Pin.IRQ_FALLING, handler=reset_button_handler)
 
 def lcd_writer(lines):
     i = 0
@@ -113,67 +126,72 @@ def update_lcd_rank(rank, lane):
     lcd.move_to(0, rank)
     lcd.putstr(f"{ PLACES[rank] }: { lane }")
 
-def check_ldr_sensors():
+def ldr_callback(pin):
     global RANK, RESULTS
+    current_time = utime.ticks_ms()
     for i, ldr_pin in enumerate(LDR_SENSORS):
-        lane = f"LANE {LDR_PIN_MAP[LDR_PINS[i]]['lane']}"
-        # only append lanes that have not previously ranked
-        if ldr_pin.value() == 1 and lane not in RANK:
-            RANK.append(lane)
-            update_lcd_rank(len(RANK) - 1, lane)
-            RESULTS[len(RANK) - 1] = LDR_PIN_MAP[LDR_PINS[i]]['lane']
-    sleep(0.005)  # Sensor Debounce
+        if ldr_pin == pin:
+            # Check debounce time for this specific sensor
+            if utime.ticks_diff(current_time, last_trigger_time[LDR_PINS[i]]) > DEBOUNCE_TIME:
+                lane = f"LANE {LDR_PIN_MAP[LDR_PINS[i]]['lane']}"
+                # Only append lanes that have not previously ranked
+                if lane not in RANK:
+                    RANK.append(lane)
+                    update_lcd_rank(len(RANK) - 1, lane)
+                    RESULTS[PLACES[len(RANK) - 1]] = LDR_PIN_MAP[LDR_PINS[i]]['lane']
+                    last_trigger_time[LDR_PINS[i]] = current_time
+                    break
 
-async def send_results(SERVER, PORT):
+# Configure interrupts instead of looping over each sensor and checking state
+for ldr_sensor in LDR_SENSORS:
+    # we trigger on rising voltage, but we could also trigger on the falling edge: Pin.IRQ_FALLING
+    ldr_sensor.irq(trigger=Pin.IRQ_RISING, handler=ldr_callback)
+
+async def send_results():
     global RESULTS
-    url = f"https://{ SERVER }:{ PORT }/api/v1/results"
+    url = f"{ ENDPOINT }/api/v1/results"
     while True:
         if RANK:
             try:
-                payload = {RESULTS}
-                headers = {'Content-Type': 'application/json'}
-                response = requests.post(url, json=payload, headers=headers)
-                if response.status_code == 200:
+                response = requests.post(url, json=RESULTS, headers=HEADERS)
+                print(RESULTS)
+                if response.status_code == 201:
                     print("Data sent successfully")
                 else:
                     print("Failed to send data")
+                response.close()
             except Exception as e:
                 print(f"Error sending data: {e}")
         await asyncio.sleep(0.1)
 
-def send_reset(SERVER, PORT):
-    global RANK
-    url = f"https://{ SERVER }:{ PORT }/api/v1/reset"
+def send_reset():
+    url = f"{ ENDPOINT }/api/v1/reset"
+    print("Sending reset")
     try:
-        headers = {'Content-Type': 'application/json'}
-        response = requests.post(url, headers=headers)
+        response = requests.post(url, headers=HEADERS)
         if response.status_code == 200:
             print("Reset sent successfully")
+            response.close()
         else:
             print("Failed to send reset")
     except Exception as e:
         print(f"Error sending reset: {e}")
 
 async def main():
-    global STOP_DISPLAY_UPDATES, RANK, LANE_COUNT, SERVER
+    global STOP_UPDATES, RANK, LANE_COUNT, SERVER, ENDPOINT
 
     # Start the data sending task
-    asyncio.create_task(send_results(SERVER, PORT))
+    asyncio.create_task(send_results())
     
     try:
         # Main loop to check sensors and update display
         while True:
-            # Check sensors
-            check_ldr_sensors()
-
             # Once the last place registers, we can stop updating the
             # display on each cycle until the reset button is pressed
             if len(RANK) == LANE_COUNT:
-                STOP_DISPLAY_UPDATES = True
+                STOP_UPDATES = True
 
-            # Check if reset button is pressed
-            check_reset_button()
-            await asyncio.sleep(0.01)  # Sensor Debounce
+            await asyncio.sleep(0.1)  # reset button debounce
     except KeyboardInterrupt:
         # Turn off the display
         print("Shutting down...")
@@ -188,16 +206,28 @@ try:
         WIFI_PASSWORD = network_config.get('password')
         SERVER = network_config.get('apiserver')
         PORT = network_config.get('port')
+        PROTOCOL = network_config.get('protocol')
+        ENDPOINT = f"{PROTOCOL}://{ SERVER }:{ PORT }"
     else:
+        lcd.clear()
         lcd_writer(["","Failed to","read config",""])
     if network_config.get('enabled'):
+        lcd.clear()
+        lcd_writer(["Connecting to","WIFI SSID:",WIFI_SSID,""])
         try:
-            networking.connect_wifi(WIFI_SSID, WIFI_PASSWORD)
-            lcd_writer(["","Wifi Connected:",WIFI_SSID,""])
+            if networking.connect_wifi(WIFI_SSID, WIFI_PASSWORD):
+                lcd.clear()
+                lcd_writer(["","Wifi Connected:",WIFI_SSID,""])
+                sleep(1)
+            else:
+                lcd.clear()
+                lcd_writer(["Failed to","connect to",WIFI_SSID,""])
         except:
+            lcd.clear()
             lcd_writer(["Failed to","connect to",WIFI_SSID,""])
     
     # Welcome msg
+    lcd.clear()
     lcd_writer(["Welcome to","PyWood Endgate","Starting","Derby Race!"])
     sleep(2)
     lcd.clear()
